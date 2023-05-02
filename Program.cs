@@ -1,4 +1,5 @@
 using PGP_API;
+using System.Text.Json;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -18,22 +19,32 @@ if (app.Environment.IsDevelopment())
 
 app.UseHttpsRedirection();
 
-app.MapPost("/encrypt", (PGP_API.ReqBody body) =>
+app.MapPost("/encrypt", async (HttpRequest request) =>
 {
     // Check Filename is provided.
-    if (body.Name == null)
+    string? name = "";
+    if (name == null)
     {
         throw new Exception("Filename is empty.");
     }
-    // Add Logging later.
+    //IFormCollection form = request.Form;
 
+    using StreamReader reader = new StreamReader(request.Body);
+    string bodyStr = await reader.ReadToEndAsync();
+
+    ReqBody? jsonStr = JsonSerializer.Deserialize<ReqBody>(bodyStr);
+
+    name = jsonStr?.Name;
+        
+    // Add Logging later.
+      
     Utility Utility = new Utility();
 
-    Stream sourceStream = Utility.DownloadIngressFile(body.Name);
+    Stream sourceStream = Utility.DownloadIngressFile(name);
 
     using Stream encryptedStream = new MemoryStream();
     Utility.PGPEncrypt(sourceStream, encryptedStream);
-    var status = Utility.UploadEncryptedFile(encryptedStream, body.Name);
+    string status = Utility.UploadEncryptedFile(encryptedStream, name);
     
     // Todo: return status failed and error message or status success in json format
     return status;
